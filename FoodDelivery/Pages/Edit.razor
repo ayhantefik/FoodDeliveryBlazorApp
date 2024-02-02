@@ -1,0 +1,97 @@
+﻿@page "/edit";
+@using FoodDelivery.Data;
+@using FoodDelivery.Service;
+@inject EateryService eateryservice;
+@inject NavigationManager Navigation;
+@inject AppDbContext context;
+<p>@message</p>
+<div style="width: 100%; display: flex; justify-content: center;">
+    <form id="editform" class="editformcl" @onsubmit=UpdateEatery style="margin-top: 15px;">
+        <div class="form-group">
+            <div style="width: 100%">
+                <label for="subject">Namn</label>
+                <input type="text" class="form-control" id="" @bind-value="name" />
+            </div>
+        </div>
+        <div class="form-group" style="margin-top: 5px;">
+            <label for="recipient">Leveranstid</label>
+            <input type="text" class="form-control" @bind-value="delivery_time" />
+        </div>
+        <div class="form-group" style="margin-top: 5px;">
+            <label for="subject">Leverans kostnad</label>
+            <input type="text" class="form-control" @bind-value="delivery_cost" />
+        </div>
+        <div class="form-group" style="margin-top: 5px;">
+            <label for="subject">Navigation namn</label>
+            <input type="text" class="form-control" @bind-value="navigation_name" />
+        </div>
+        <div class="form-group" style="margin-top: 30px;">
+            <label for="subject">Bild</label>
+            <!--<InputFile id="fileInput" style="margin-top: 10px;" />-->
+            <input type="text" class="form-control" @bind-value="image" />
+        </div>
+        <div class="d-grid gap-2 col-6 mx-auto">
+            <button type="submit" class="btn btn-primary" style="font-weight:bold; float: right; margin-top: 10px; background-color: grey; color: white; border-color: black;">Ändra</button>
+            <button @onclick=DeleteEatery class="btn btn-primary" style="font-weight:bold; float: right; margin-top: 10px; background-color: lightcoral; color: white; border-color: black;">Radera</button>
+
+        </div>
+    </form>
+</div>
+
+@code {
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? module;
+    private string name;
+    private string delivery_time;
+    private string delivery_cost;
+    private string image;
+    private string navigation_name;
+    private string e;
+    private int id;
+    private string message;
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        e = query.TryGetValue("e", out var value) ? (string)value : "eaterynull";
+        if (int.TryParse(e, out id))
+        {
+            foreach (var eatery in context.eateries)
+            {
+                if (eatery.Id == id)
+                {
+                    name = eatery.Name;
+                    delivery_time = eatery.Deliverytime;
+                    delivery_cost = eatery.Deliverycost;
+                    image = eatery.Image;
+                    navigation_name = eatery.Navigation;
+                }
+            }
+        }
+    }
+    private void UpdateEatery()
+    {
+        try
+        {
+            message = "loading..";
+            var eatery = context.eateries.First(a => a.Id == id);
+            eatery.Name = name;
+            eatery.Deliverytime = delivery_time;
+            eatery.Deliverycost = delivery_cost;
+            eatery.Image = image;
+            eatery.Navigation = navigation_name;
+            context.SaveChanges();
+            Navigation.NavigateTo("/controlpanel");
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+        }
+    }
+    private void DeleteEatery()
+    {
+        eateryservice.DeleteEatery(id);
+        Navigation.NavigateTo("/controlpanel");
+    }
+}

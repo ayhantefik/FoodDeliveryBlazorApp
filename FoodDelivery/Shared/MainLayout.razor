@@ -1,0 +1,56 @@
+﻿@using FoodDelivery.Global;
+@inject AddedItems addedItems;
+@inherits LayoutComponentBase;
+
+<PageTitle>FoodDelivery</PageTitle>
+<div class="top-row px-4" style="background-color: white; width: 100%; position: relative; top: 0; border-bottom: 1px solid darkgray;">
+    <a href="/" style="color: black; position: absolute; top: 0; left: 0; overflow: visible;">
+        <img src="/img/logo.png" height="50" width="175" />
+    </a>
+    <AuthorizeView Roles="Driver">
+        <a href="scanner" style="color: black; position: absolute; top: 50%; left: 50%; margin-right: -50%; transform: translate(-50%, -50%);"><i style="font-size:30px" class="fa">&#xf029;</i></a>
+    </AuthorizeView>
+    <AuthorizeView Roles="Driver">
+        <a href="orderlist" style="color: black">Order</a>
+    </AuthorizeView>
+    <AuthorizeView>
+        <a href="history" style="color: black">Beställningar</a>
+    </AuthorizeView>
+    <AuthorizeView Roles="Admin">
+        <a href="controlpanel" style="color: black">Kontrol Panel</a>
+    </AuthorizeView>
+    <AuthorizeView>
+        <NotAuthorized>
+            <a href="/Identity/Account/Register" style="color: black">Registrera</a>
+        </NotAuthorized>
+    </AuthorizeView>
+    <AuthorizeView>
+        <NotAuthorized>
+            <a href="/Identity/Account/Login" style="color: black">Logga in</a>
+        </NotAuthorized>
+    </AuthorizeView>
+    <AuthorizeView>
+        <a href="/Identity/Account/Logout" style="color: black">Logga ut</a>
+    </AuthorizeView>
+    <a href="payment" style="display: block; color: black;">
+        <img style="float:left;" src="img/bag.png" height="40" width="40" />
+        <p>@addedItems.UpdateCurrentAddedItems</p>
+    </a>
+</div>
+<NavMenu />
+<main>
+    
+    @Body
+    
+</main>
+@code{
+    private int currentAddedItems;
+    protected override void OnInitialized()
+    {
+        addedItems.OnCountChanged += OnCountChanged;
+    }
+    private void OnCountChanged(int newCount)
+    {
+        InvokeAsync(() => StateHasChanged());
+    }
+}

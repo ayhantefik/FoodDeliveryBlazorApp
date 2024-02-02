@@ -1,0 +1,52 @@
+﻿@page "/menucontroll";
+@using FoodDelivery.Data;
+@inject AppDbContext context;
+@inject NavigationManager Navigation;
+@attribute [Authorize(Roles = "Admin")]
+    
+<button class="btn btn-primary" @onclick='() => NavigateToNewItem(eatery)' style="margin-left: 30px; margin-top: 50px; background-color: grey; color: white; border-color: black; width: 100px;">Ny</button>
+
+<div style="width: 100%; display: flex; justify-content: center;">
+    <table id="menutable" class="menutablecl">
+        <tr>
+            <td>Typ</td>
+            <td>Namn</td>
+            <td>Pris</td>
+            <td></td>
+        </tr>
+        @foreach (var item in context.products)
+        {
+            if (item.EateryName == eatery)
+            {
+                <tr>
+                    <td>@item.Producttype</td>
+                    <td>@item.Name</td>
+                    <td>@item.Price</td>
+                    <td>
+                        <button class="btn btn-light" @onclick='() => NavigateEditProduct(item.Id)' style="font-weight:bold; margin-top: 10px; border: 1px solid black; color: black">ÄNDRA</button>
+                    </td>
+                </tr>
+            }
+        }
+    </table>
+</div>
+@code {
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? module;
+    string eatery;
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        eatery = query.TryGetValue("m", out var value) ? (string)value : "eaterynull";
+    }
+    private void NavigateEditProduct(int productId)
+    {
+        Navigation.NavigateTo($"/editproduct?e={productId}");
+    }
+    private void NavigateToNewItem(string eateryToAdd)
+    {
+        Navigation.NavigateTo($"/addnewitem?e={eateryToAdd}");
+    }
+}

@@ -1,0 +1,235 @@
+﻿@page "/history"
+@using FoodDelivery.Data;
+@using FoodDelivery.Models;
+@inject AppDbContext context;
+@inject AuthenticationStateProvider auth;
+@inject NavigationManager Navigation
+
+@{
+    double sum = 0;
+    DateTime date = new DateTime();
+}
+<div style="width: 100%; display: block;">
+    <div style="padding: 20px; @statusesVisibility; justify-content: center;">
+        <div style="float: left; padding: 10px;">
+            <div class="status" style="background-color: dimgrey; float:left; padding: 5px;"></div><p style="float: left;">väntar på bearbetning</p>
+        </div>
+        <div style="float: left; padding: 10px;">
+            <div class="status" style="background-color: darkorange; float:left; padding: 5px;"></div><p style="float: left;">lagning pågår</p>
+        </div>
+        <div style="float: left; padding: 10px;">
+            <div class="status" style="background-color: lightskyblue; float:left; padding: 5px;"></div><p style="float: left;">på väg</p>
+        </div>
+        <div style="float: left; padding: 10px;">
+            <div class="status" style="background-color: green; float:left; padding: 5px;"></div><p style="float: left;">levererad</p>
+        </div>
+    </div>
+    <div id="historyid" class="history" style="margin-left: auto; margin-right: auto;">
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="list-group" style="width: 100%; @customerVisibility; margin-top: 60px;">
+                    @foreach (var item in purchases)
+                    {
+                        if (item.Status == "taken")
+                        {
+                            statusColor = "darkorange";
+                        }
+                        if (item.Status == "new")
+                        {
+                            statusColor = "dimgrey";
+                        }
+                        if (item.Status == "onway")
+                        {
+                            statusColor = "lightskyblue";
+                        }
+                        if (item.Status == "done")
+                        {
+                            statusColor = "green";
+                        }
+                        string eatery = CapitalizeFirstLetter(item.EateryName);
+                        orderTime = item.DatePurchase;
+                        string formatedTime = orderTime.ToString("dd MMM yyyy HH:mm:ss");
+                        <button type="button" @onclick='() => ShowPurchaseDetail(item.PurchaseCode)' class="list-group-item list-group-item-action" style="width: 100%; margin-left: auto; margin-right: auto;"><div class="status" style="background-color: @statusColor"></div>@eatery - @formatedTime</button>
+                    }
+                </div>
+                <div style="@customerDetailVisibility;" class="modal">
+                    <div style="width: 400px; background-color: #d9d9d9;margin-left: auto; margin-right: auto; position: relative;">
+                        <span class="close" id="closeid" @onclick=CloseOrder>&times;</span>
+                        <table style="background-color: #d9d9d9; color: black; width: 400px; margin-top: 50px; margin-left: auto; margin-right: auto;">
+                            <tr style="margin-bottom: 30px; width: 200px;">
+                                <td style="width: 40%; background-color: black; color: white; ">Namn</td>
+                                <td style="width: 30%; background-color: black; color: white;">Antal</td>
+                                <td style="width: 30%; background-color: black; color: white;">Pris</td>
+                            </tr>
+                            @foreach (var item in purchasesDetail)
+                            {
+                                if (item.PurchaseCode == choosenpurchase)
+                                {
+                                    <tr style="margin-bottom: 30px;  width: 100px;">
+                                        <td style="width: 40%;">@item.Name</td>
+                                        <td style="width: 30%;">@item.Quantity</td>
+                                        <td style="width: 30%;">@item.Price kr</td>
+                                    </tr>
+                                    eateryName = CapitalizeFirstLetter(item.EateryName);
+                                    adress = item.DeliveryAddress;
+                                    sum = sum + item.Price;
+                                    date = item.DatePurchase;
+                                    rider = item.Driver;
+                                    purchaseuser = item.CustomerName;
+                                }
+                            }
+                            <tr style="width: 100px;">
+                                <td style="width: 30%;"></td>
+                                <td style="width: 30%;"></td>
+                                <td style="width: 40%;"><b>Totalt: @sum kr</b></td>
+                            </tr>
+                        </table>
+                        <p style="width: 100%; margin-top: 50px; padding-left: 10px; font-size: 14px;"><b>Beställt från:</b> @eateryName</p>
+                        <p style="width: 100%; padding-left: 10px; font-size: 14px;"><b>Till address:</b> @adress</p>
+                        <p style="width: 100%; padding-left: 10px; font-size: 14px;"><b>Kund: </b> @purchaseuser</p>
+                        <p style="width: 100%; padding-left: 10px; font-size: 14px;"><b>Budbilsförare:</b> @rider</p>
+                        <p style="width: 100%; margin-top: 30px; padding: 10px; font-size: 14px;"><b>Datum:</b> @date</p>
+                    </div>
+
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <!-- Content to show for non-Admin roles -->
+                <div class="list-group" style="width: 100%; @customerVisibility; margin-top: 60px;">
+                    @foreach (var item in purchases)
+                    {
+                        @if (username == item.CustomerName)
+                        {
+                            countOrder++;
+                            if (item.Status == "taken")
+                            {
+                                statusColor = "darkorange";
+                            }
+                            if (item.Status == "new")
+                            {
+                                statusColor = "dimgrey";
+                            }
+                            if (item.Status == "onway")
+                            {
+                                statusColor = "lightskyblue";
+                            }
+                            if (item.Status == "done")
+                            {
+                                statusColor = "green";
+                            }
+                            string eatery = CapitalizeFirstLetter(item.EateryName);
+                            orderTime = item.DatePurchase;
+                            string formatedTime = orderTime.ToString("dd MMM yyyy HH:mm:ss");
+                            <button type="button" @onclick='() => ShowPurchaseDetail(item.PurchaseCode)' class="list-group-item list-group-item-action" style="margin-left: auto; margin-right: auto;"><div class="status" style="background-color: @statusColor;"></div>@eatery - @formatedTime</button>
+                        }
+                    }
+                    @if (countOrder == 0)
+                    {
+                        <p>Du har inga beställningar</p>
+                    }
+                </div>
+                <div style="@customerDetailVisibility;" class="modal">
+                    <div style="width: 400px; background-color: #d9d9d9;margin-left: auto; margin-right: auto; position: relative;">
+                        <span class="close" id="closeid" @onclick=CloseOrder>&times;</span>
+                        <table style="background-color: #d9d9d9; color: black; width: 400px; margin-top: 50px; margin-left: auto; margin-right: auto;">
+                            <tr style="margin-bottom: 30px; width: 200px;">
+                                <td style="width: 40%; background-color: black; color: white; ">Namn</td>
+                                <td style="width: 30%; background-color: black; color: white;">Antal</td>
+                                <td style="width: 30%; background-color: black; color: white;">Pris</td>
+                            </tr>
+                            @foreach (var item in purchasesDetail)
+                            {
+                                if (item.PurchaseCode == choosenpurchase)
+                                {
+                                    <tr style="margin-bottom: 30px;  width: 100px;">
+                                        <td style="width: 40%;">@item.Name</td>
+                                        <td style="width: 30%;">@item.Quantity</td>
+                                        <td style="width: 30%;">@item.Price kr</td>
+                                    </tr>
+                                    eateryName = CapitalizeFirstLetter(item.EateryName);
+                                    adress = item.DeliveryAddress;
+                                    sum = sum + item.Price;
+                                    date = item.DatePurchase;
+                                }
+                            }
+                            <tr style=" width: 100px;">
+                                <td style="width: 30%;"></td>
+                                <td style="width: 30%;"></td>
+                                <td style="width: 40%;"><b>Totalt: @sum kr</b></td>
+                            </tr>
+                        </table>
+                        <p style="width: 100%; margin-top: 50px; padding-left: 10px; font-size: 14px;"><b>Beställt från:</b> @eateryName</p>
+                        <p style="width: 100%; padding-left: 10px; font-size: 14px;"><b>Till address:</b> @adress</p>
+                        <p style="width: 100%; margin-top: 30px; padding: 10px; font-size: 14px;"><b>Datum:</b> @date</p>
+                    </div>
+
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</div>
+
+@code {
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? module;
+    private string statusColor;
+    private string username;
+    private string? rider;
+    private int countOrder = 0;
+    private string adminVisibility = "display: block";
+    private string customerVisibility = "display: block";
+    private string customerDetailVisibility = "display: none";
+    private string choosenpurchase;
+    private string purchaseuser;
+    private string statusesVisibility = "display: flex";
+    private string eateryName;
+    private string adress;
+    private DateTime orderTime = new DateTime();
+    private List<string> purchasesCode = new List<string>();
+    private List<DonePurchase> purchases = new List<DonePurchase>();
+    private List<DonePurchase> purchasesDetail = new List<DonePurchase>();
+    protected override async void OnInitialized()
+    {
+        foreach(var purchase in context.donePurchases)
+        {
+            purchasesDetail.Add(purchase);
+        }
+
+        purchases = context.donePurchases
+            .Select(p => new DonePurchase { PurchaseCode = p.PurchaseCode, DatePurchase = p.DatePurchase, CustomerName = p.CustomerName, Driver = p.Driver, EateryName = p.EateryName, DeliveryAddress = p.DeliveryAddress, Status = p.Status })
+            .Distinct()
+            .OrderByDescending(p => p.DatePurchase)
+            .ToList();
+
+        var authenticationState = await auth.GetAuthenticationStateAsync();
+        var user = authenticationState.User;
+        if (user.Identity.IsAuthenticated)
+        {
+            username = user.Identity.Name;
+        }
+    }
+    private void ShowPurchaseDetail(string code)
+    {
+        choosenpurchase = code;
+        customerDetailVisibility = "display: block";
+    }
+    private void BackBtn()
+    {
+        statusesVisibility = "display: flex";
+        customerVisibility = "display: block";
+        customerDetailVisibility = "display: none";
+    }
+    private static string CapitalizeFirstLetter(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+        return char.ToUpper(input[0]) + input.Substring(1);
+    }
+    private void CloseOrder()
+    {
+        customerDetailVisibility = "none";
+    }
+}

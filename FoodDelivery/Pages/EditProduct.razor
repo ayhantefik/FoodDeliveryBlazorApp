@@ -1,0 +1,103 @@
+﻿@page "/editproduct";
+@using FoodDelivery.Data;
+@inject AppDbContext context;
+@inject NavigationManager Navigation;
+@attribute [Authorize(Roles = "Admin")]
+
+<p>@message</p>
+<div style="width: 100%; display: flex; justify-content: center;">
+    <form id="editproductform" class="editproductformcl" @onsubmit=UpdateProduct style="margin-top: 15px;">
+        <div class="form-group">
+            <div style="width: 100%">
+                <label for="subject">Namn</label>
+                <input type="text" class="form-control" id="" @bind-value="name" />
+            </div>
+        </div>
+        <div class="form-group" style="margin-top: 5px;">
+            <label for="recipient">Produkt typ</label>
+            <input type="text" class="form-control" @bind-value="producttype" />
+        </div>
+        <div class="form-group" style="margin-top: 5px;">
+            <label for="subject">Beskrivning</label>
+            <input type="text" class="form-control" @bind-value="description" />
+        </div>
+        <div class="form-group" style="margin-top: 5px;">
+            <label for="subject">Pris</label>
+            <input type="text" class="form-control" @bind-value="price" />
+        </div>
+        <div class="form-group" style="margin-top: 30px;">
+            <label for="subject">Bild</label>
+            <input type="text" class="form-control" @bind-value="image" />
+        </div>
+        <div class="d-grid gap-2 col-6 mx-auto">
+            <button type="submit" class="btn btn-primary" style="float: right; margin-top: 10px; background-color: grey; color: white; border-color: black;">Ändra</button>
+            <button @onclick=DeleteProduct class="btn btn-primary" style="float: right; margin-top: 10px; background-color: lightcoral; color: white; border-color: black;">Radera</button>
+
+        </div>
+    </form>
+</div>
+@code {
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? module;
+    private string message = "";
+    private string e;
+    private string eateryname;
+    private string producttype;
+    private string name;
+    private string description;
+    private string image;
+    private double price;
+    private int id;
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        e = query.TryGetValue("e", out var value) ? (string)value : "eaterynull";
+        if (int.TryParse(e, out id))
+        {
+            foreach (var product in context.products)
+            {
+                if (product.Id == id)
+                {
+                    name = product.Name;
+                    eateryname = product.EateryName;
+                    producttype = product.Producttype;
+                    description = product.Description;
+                    image = product.Image;
+                    price = product.Price;
+                }
+            }
+        }
+    }
+    private void UpdateProduct()
+    {
+        try
+        {
+            message = "loading..";
+            var product = context.products.First(a => a.Id == id);
+            product.Name = name;
+            product.EateryName = eateryname;
+            product.Producttype = producttype;
+            product.Description = description;
+            product.Image = image;
+            product.Price = price;
+            context.SaveChanges();
+            Navigation.NavigateTo($"/menucontroll?m={eateryname}");
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+        }
+    }
+    private void DeleteProduct()
+    {
+        var productToDelete = context.products.Find(id);
+        if (productToDelete != null)
+        {
+            context.products.Remove(productToDelete);
+            context.SaveChanges();
+        }
+        Navigation.NavigateTo($"/menucontroll?m={eateryname}");
+    }
+}

@@ -1,0 +1,42 @@
+﻿@page "/controlpanel"
+@using FoodDelivery.Data;
+@inject AppDbContext context;
+@inject NavigationManager Navigation;
+@attribute [Authorize(Roles = "Admin")]
+<div style="width: 100%; justify-content: center; align-items: center;">
+    <div style="width: 80%; margin-top: 50px; margin-left: auto; margin-right: auto;">
+        <a href="addnew">
+            <button class="btn btn-primary-" style="font-weight:bold; margin-bottom: 50px; background-color: grey; color: white; border-color: black; width: 100px;">
+                Ny <i role="button" class="fa fa-plus" style="font-size: 20px; color: white;"></i>
+            </button>
+        </a>
+    </div>
+    <table id="eateriestable" class="eateriestablecl" style="width: 60%; margin-top: 20px; margin-left: auto; margin-right: auto; border: 1px solid black">
+        @foreach(var eatery in context.eateries)
+        {
+            <tr>
+                <td style="width: 60%;"><p style="padding-left: 10px;">@eatery.Name</p></td>
+                <td style="width: 20%;">
+                    <button class="btn btn-light" @onclick='() => NavigateEdit(eatery.Id)' style="font-weight:bold; border: 1px solid black; color: black">ÄNDRA</button>
+                </td>
+                <td style="width: 20%;">
+                    <button class="btn btn-light" @onclick='() => NavigateToMenu(eatery.Navigation)' style="font-weight:bold; border: 1px solid black; color: black">MENU</button>
+                </td>
+            </tr>
+        }
+    </table>
+</div>
+
+@code {
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? module;
+    private void NavigateEdit(int eateryId)
+    {
+        Navigation.NavigateTo($"/edit?e={eateryId}");
+    }
+    private void NavigateToMenu(string nav)
+    {
+        Navigation.NavigateTo($"/menucontroll?m={nav}");
+    }
+}

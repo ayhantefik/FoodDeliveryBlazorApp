@@ -1,0 +1,142 @@
+﻿@page "/scanner";
+@using FoodDelivery.Data;
+@using FoodDelivery.Models;
+@using System.Net;
+@using System.Net.Mail;
+@using System.Drawing;
+@using System.Drawing.Imaging;
+@using QRCoder;
+@inject AppDbContext context;
+
+
+<div style="display: flex; justify-content: center">
+    <div id="my-qr-reader" class="myqr">
+
+    </div>
+</div>
+<div style="@resultVisibility; text-align: center;" id="resultpage">
+    <h3 style="margin-top: 70px;" id="scanresult"></h3>
+    <button style="margin-top: 50px;" class="btn-primary" @onclick=CheckResult>Bekräfta</button>
+</div>
+<p>@message</p>
+@code {
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? module;
+    private List<DonePurchase> purchases = new List<DonePurchase>();
+    private string? scanResult;
+    private string? message;
+    private string resultVisibility = "display: none";
+
+    [JSInvokable]
+    public void Result(string qrResult)
+    {
+        scanResult = qrResult;
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("myBlazorInterop.scan");
+        }
+
+        module ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import", "./Pages/Scan.razor.js");
+
+        await module.InvokeVoidAsync("isDomReady");
+        await base.OnAfterRenderAsync(firstRender);
+    }
+    protected override async void OnInitialized()
+    {
+        foreach (var purchase in context.donePurchases)
+        {
+            purchases.Add(purchase);
+        }
+    }
+    private async Task CheckResult()
+    {
+        scanResult = await JS.InvokeAsync<string>("myBlazorInterop.getTest");
+        bool isEatery = purchases.Any(item => item.PurchaseCode == scanResult && item.Status == "taken");
+        bool isCustomer = purchases.Any(item => item.PurchaseCode == scanResult && item.Status == "onway");
+        string customerContact = purchases.Where(item => item.PurchaseCode == scanResult).Select(item => item.CustomerName).FirstOrDefault();
+        if (isCustomer)
+        {
+            context.donePurchases.Where(item => item.PurchaseCode == scanResult).ToList().ForEach(item => item.Status = "done");
+            context.SaveChanges();
+            message = "Leverans genomfördes!";
+            try
+            {
+                using (MailMessage mail = new MailMessage())
+                {
+                    mail.From = new MailAddress("ayhantefik93@gmail.com");
+                    mail.To.Add(customerContact);
+                    mail.Subject = "Tack för du valde oss!";
+                    mail.Body = $"Hej! Nu är din leverans mottagen! Smaklig måltid!";
+
+                    mail.IsBodyHtml = true;
+
+                    using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
+                    {
+                        smtp.Credentials = new NetworkCredential("ayhantefik93@gmail.com", "odhi myqm cfhr tqqt");
+                        smtp.EnableSsl = true;
+                        smtp.Send(mail);
+                    }
+                    resultVisibility = "display: none";
+                }
+
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+            }
+        }
+        else if(isEatery)
+        {
+            context.donePurchases.Where(item => item.PurchaseCode == scanResult).ToList().ForEach(item => item.Status = "onway" );
+            context.SaveChanges();
+            message = "Beställning status: På väg";
+            // Generate the QR code
+            using MemoryStream ms = new();
+            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+            // Pass order code in qrcode
+            QRCodeData qrCodeData = qrGenerator.CreateQrCode(scanResult, QRCodeGenerator.ECCLevel.Q);
+            QRCode qrCode = new QRCode(qrCodeData);
+            Bitmap qrCodeImage = qrCode.GetGraphic(20);
+            qrCodeImage.Save(ms, ImageFormat.Png);
+            try
+            {
+                using (MailMessage mail = new MailMessage())
+                {
+                    mail.From = new MailAddress("ayhantefik93@gmail.com");
+                    mail.To.Add(customerContact);
+                    mail.Subject = "Beställning på väg";
+                    mail.Body = $"Hej! Din beställning är på väg till dig!";
+
+                    mail.IsBodyHtml = true;
+
+                    ms.Position = 0;
+
+                    var attachment = new Attachment(ms, "qrcode.png", "image/png");
+                    mail.Attachments.Add(attachment);
+
+                    using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
+                    {
+                        smtp.Credentials = new NetworkCredential("ayhantefik93@gmail.com", "odhi myqm cfhr tqqt");
+                        smtp.EnableSsl = true;
+                        smtp.Send(mail);
+                    }
+                    resultVisibility = "display: none";
+                }
+
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+            }
+        }
+        else
+        {
+            message = "Beställningen hittades ej!";
+        }
+    }
+}

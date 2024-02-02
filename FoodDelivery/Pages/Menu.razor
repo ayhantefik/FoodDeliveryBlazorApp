@@ -1,0 +1,184 @@
+﻿@page "/menu"
+@using FoodDelivery.Models;
+@using FoodDelivery.Global;
+@using FoodDelivery.Data;
+@inject AppDbContext context;
+@inject NavigationManager Navigation;
+@inject AddedItems addedItems;
+<div style="display: @menuVisibility;">
+    <div class="scrollmenu" id="scrollmenuid">
+        @foreach (var type in producttypes)
+        {
+            <a role="button" id="@type" @onclick='() => MenuBrowsing(type)'>@type</a>
+        }
+    </div>
+    <div style="width: 100%; justify-content: center; align-items: center; display: flex;">
+        <div class="menudiv" id="menudivid">
+            <div style="background-color: white; height: 15px; width: 100%; float: left;">
+                <div class="menuheader" style="border-top-left-radius: 80px 80px; float: left;"></div>
+                <div class="menuheader" style="border-top-right-radius: 80px 80px; float: left;"></div>
+            </div>
+            @foreach (var product in context.products)
+            {
+                if (product.Producttype == menubrowse)
+                {
+                    <div class="menurow_main" id="menurowid">
+                        <div class="menucol1">
+                            <div class="productname">
+                                <h5>@product.Name</h5>
+                            </div>
+                            <div class="productcontent">
+                                <p>@product.Description</p>
+                            </div>
+                        </div>
+                        <div class="menucol2">
+                            <div class="productimage">
+                                <img src="/productsimages/@product.Image" id="myImg_@product.Image" width="92" height="92" asp-append-version="true">
+                            </div>
+                        </div>
+                        <div class="menucol3">
+                            <div class="productprice">
+                                <h5>@product.Price kr</h5>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: center; align-items: center; position: absolute; bottom: 15px; right: 25px; border: 1px solid black; border-radius: 50%; height: 30px; width: 30px;">
+                            <i role="button" class="fa fa-plus" style="font-size: 28px; color: #666666;" @onclick='() => ShowItemPage(product.Name, product.Price, product.Image, product.EateryName)'></i>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+<div style="width: 100%; height: 100%; background-color: white; display: @loadingVisibility; justify-content: center; align-items: center;">
+    <div class="loader"></div>
+</div>
+
+<div class="modal" style="display: @itemPageVisibility">
+    
+    <div id="choosenitemid" class="choosenitem" style="height: 300px; display: block; position: relative;">
+        <span class="close" id="closeid" @onclick=CloseItemPage>&times;</span>
+        <div style="height: 100%; width: 50%; background-color: #f2f3f2; float: left; display: flex; justify-content: center; align-items: center;">
+            <img src="/productsimages/@choosenItemImage" width="200" height="200" />
+        </div>
+        <div style="width: 50%; height: 100%; background-color: #f2f3f2; display: flex; justify-content: center; align-content: center; text-align: center;">
+            <h4 style="margin-top: 50px; width: 100%; display: inline-block;">@choosenItemName</h4>
+            <div style="margin-top: 80px; width: 100%; position: absolute; bottom: 150px;">
+                <i role="button" class="fa fa-minus" style="font-size: 28px; color: @minusColor;" @onclick=ItemMinus></i>
+                <input type="text" @bind-value="@quantityItem" style="width: 30px; margin-left: 20px;"/>
+                <i role="button" class="fa fa-plus" style="font-size: 28px; color: black; margin-left: 20px;" @onclick=ItemPlus></i>
+            </div>
+            <button class="btn btn-primary" @onclick='() => AddToItemList(choosenItemName, choosenItemPrice, quantityItem, choosenItemEateryName, choosenItemImage)' style="position: absolute; bottom: 50px; font-weight:bold; margin-top: 10px; background-color: #bbc4c4; color: black; width: 45%;">LÄGG TILL &ensp;<img style="position:absolute; top: 5px;" src="img/bag.png" height="25" width="25" /></button>
+
+        </div>
+    </div>
+</div>
+@code {
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? module;
+    private string m = "";
+    private string menubrowse = "";
+    private string browseColor = "grey";
+    private string itemPageVisibility = "none";
+    private string choosenItemName = "";
+    private double choosenItemPrice;
+    private string choosenItemImage;
+    private string loadingVisibility = "block";
+    private string menuVisibility = "none";
+    private string choosenItemEateryName;
+    private int choosenItemQuantity;
+    private int quantityItem = 1;
+    private string minusColor = "black";
+    List<string> producttypes = new List<string>();
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        m = query.TryGetValue("m", out var value) ? (string)value : "eaterynull";
+
+        producttypes = context.products.Where(p => p.EateryName.Contains(m)).Select(p => p.Producttype).Distinct().ToList();
+        menubrowse = producttypes[0]; // Start menu with first type
+        await Task.Delay(1200);
+        loadingVisibility = "none";
+        menuVisibility = "block";
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        module ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import", "./Pages/Menu.razor.js");
+
+        await module.InvokeVoidAsync("browserColor", producttypes, menubrowse);
+        await base.OnAfterRenderAsync(firstRender);
+    }
+    private void MenuBrowsing(string choice)
+    {
+        menubrowse = choice;
+    }
+    private void ShowItemPage(string productName, double productPrice, string productImage, string productEatery)
+    {
+        if(quantityItem == 1)
+        {
+            minusColor = "#666666";
+        }
+        choosenItemName = productName;
+        choosenItemPrice = productPrice;
+        choosenItemImage = productImage;
+        choosenItemEateryName = productEatery;
+
+        itemPageVisibility = "flex";
+    }
+    private void CloseItemPage()
+    {
+        choosenItemName = "";
+        choosenItemPrice = 0;
+        choosenItemImage = "";
+        choosenItemEateryName = "";
+        quantityItem = 1;
+        itemPageVisibility = "none";
+    }
+    private void ItemPlus()
+    {
+        quantityItem++;
+        if (quantityItem > 1)
+        {
+            minusColor = "black";
+        }
+    }
+    private void ItemMinus()
+    {
+        if (quantityItem > 1)
+        {
+            quantityItem--;
+            minusColor = "black";
+        }
+        if (quantityItem == 1)
+        {
+            minusColor = "#666666";
+        }
+    }
+    private void AddToItemList(string itemName, double itemPrice, int itemQuantity, string itemEatery, string img)
+    {
+        int totalItems = 0;
+        Item newitem = new Item();
+        newitem.Name = itemName;
+        newitem.Price = itemPrice;
+        newitem.Quantity = itemQuantity;
+        newitem.EateryName = itemEatery;
+        newitem.ItemImg = img;
+
+        if (!addedItems.ItemList.Any(item => item.EateryName == itemEatery))
+        {
+            // Clear the list if no item has the specified eatery name
+            addedItems.ItemList.Clear();
+        }
+
+        addedItems.ItemList.Add(newitem);
+        foreach(var quantityItems in addedItems.ItemList)
+        {
+            totalItems += quantityItems.Quantity;
+        }
+        addedItems.UpdateCurrentAddedItems = totalItems;
+        CloseItemPage();
+    }
+}

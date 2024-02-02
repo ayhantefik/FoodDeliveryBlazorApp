@@ -1,0 +1,38 @@
+﻿@page "/"
+@using FoodDelivery.Global;
+@using FoodDelivery.Models;
+@using FoodDelivery.Data;
+@inject NavigationManager Navigation
+@inject AddedItems addedItems;
+@inject AppDbContext context;
+
+<PageTitle>Index</PageTitle>
+<div style="display: block; width: 100%;">
+<div id="eateryBtn" class="eateryclass" style="display: block; margin-left: auto; margin-right: auto; padding-bottom: 100px;">
+        @foreach (var eatery in context.eateries)
+        {
+            <div style="margin-top: 80px; justify-content: center; align-items: center; display: flex;">
+
+                <div role="button" @onclick='() => NavigationToMenu(eatery.Navigation)' style="height: 220px; width: 100%; display: flex; background-image: url('/eateryimg/@eatery.Image'); background-size: cover; position: relative;">
+                        <div style="position: absolute; bottom: 0; opacity: 70%; background-color: black; height: 70px; width: 100%;">
+                        </div>
+                        <h3 style="position: absolute; left: 15px; bottom: 10px; color: white;">@eatery.Name</h3>
+                        <p style="position: absolute; right: 15px; bottom: 25px; color: white;"><i class="fa fa-clock-o" style="color: white"></i> @eatery.Deliverytime</p>
+                        <p style="position: absolute; right: 15px; bottom: 0; color: white;">@eatery.Deliverycost</p>
+                </div>
+            </div>
+        }
+</div>
+</div>
+
+
+
+@code{
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? module;
+    private void NavigationToMenu(string nav){
+        Navigation.NavigateTo($"/menu?m={nav}");
+    }
+}
+

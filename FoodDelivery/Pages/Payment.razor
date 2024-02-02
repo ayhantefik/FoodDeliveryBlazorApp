@@ -1,0 +1,178 @@
+﻿@page "/payment"
+@using FoodDelivery.Global;
+@using FoodDelivery.Models;
+@using FoodDelivery.Data;
+@using System.IO
+@using System.Net;
+@using System.Net.Mail;
+@inject AppDbContext context;
+@inject AddedItems addedItems;
+@inject AuthenticationStateProvider auth;
+<div style="width: 100%; display: @paymentVisibility; justify-content: center; align-content: center; text-align: center;">
+    @if(addedItems.ItemList.Count > 0)
+    {
+        <div style="width: 100%; display: inline-block; margin-top: 30px;">
+            @foreach (var item in addedItems.ItemList)
+            {
+                <div id="itemRow" class="itemRowcl" style="height: 70px; margin-left: auto; margin-right: auto; margin-top: 20px;">
+                    <div style="width: 20%; float: left; display: flex; justify-content: center;">
+                        <img src="/productsimages/@item.ItemImg" height="70" width="70" />
+                    </div>
+                    <div style="width: 40%; text-align: left; float:left;">
+                        <h5 style="padding-left: 10px;">@item.Name</h5>
+                        <p style="padding-left: 10px;">@item.Price kr</p>
+                    </div>
+                    <div style="width: 20%; float:left;">
+                        <h5>@item.Quantity</h5>
+                    </div>
+                    <div style="width: 20%; float:left;">
+                        <i class="fa fa-trash-o" @onclick='() => DeleteItem(item.Name, item.EateryName)' style="font-size: 32px; color: black;"></i>
+                    </div>
+                </div>
+            }
+            <div id="paymentRow" class="paymentRowcl" style="margin-left: auto; margin-right: auto; margin-top: 100px;">
+                <input type="text" style="width: 100%;" placeholder="Leveransadress" @bind-value="deliveryAdress" />
+                <p style="color: red">@messageAdress</p>
+                <button class="btn btn-primary btn-lg" @onclick=Pay style="position: relative; font-weight:bold; margin-top: 30px; background-color: grey; color: white; width: 100%;">Betala @totalSum kr <div class="loader" style="@loaderVisibility;"></div> </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <h2 style="margin-top: 150px;">Din varukorg är tom</h2>
+    }
+</div>
+<div style="width: 100%; text-align: center; display: @donePaymentVisibility">
+    <h1>Din betalning genomfördes.</h1>
+    <br />
+    <h1>Tack för din beställning!</h1>
+</div>
+<div style="width: 100%; text-align: center; display: @needLogInVisibility; margin-top: 100px;">
+    <h3>För att kunna betala behöver du <a href="/Identity/Account/Login" style="color: cornflowerblue">logga in</a></h3>
+    <br />
+</div>
+@code {
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? module;
+    private double totalSum;
+    private string paymentVisibility = "block";
+    private string donePaymentVisibility = "none";
+    private string username;
+    private string needLogInVisibility = "none";
+    private string receipt;
+    private string deliveryAdress = "";
+    private string messageAdress = "";
+    private string loaderVisibility = "display: none";
+    protected override async void OnInitialized()
+    {
+        foreach(var item in addedItems.ItemList)
+        {
+            totalSum += item.Quantity*item.Price;
+        }
+
+        var authenticationState = await auth.GetAuthenticationStateAsync();
+        var user = authenticationState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            // User is authenticated
+            username = user.Identity.Name;
+        }
+    }
+    private async Task Pay()
+    {
+        loaderVisibility = "display: block";
+        var authenticationState = await auth.GetAuthenticationStateAsync();
+        var user = authenticationState.User;
+
+        await Task.Run(async () =>
+        {
+            if (user.Identity.IsAuthenticated)
+            {
+                if (deliveryAdress.Length > 3)
+                {
+                    var makeCode = Guid.NewGuid();
+                    string code = makeCode.ToString();
+                    DateTime datetimenow = new DateTime();
+                    datetimenow = DateTime.Now;
+
+                    foreach (var items in addedItems.ItemList)
+                    {
+                        receipt += $"{items.Name} {items.Price} <br/>";
+                        DonePurchase donepurchase = new DonePurchase
+                            {
+                                Name = items.Name,
+                                Price = items.Price,
+                                Quantity = items.Quantity,
+                                DatePurchase = datetimenow,
+                                PurchaseCode = code,
+                                CustomerName = username,
+                                Status = "new",
+                                EateryName = items.EateryName,
+                                DeliveryAddress = deliveryAdress
+                            };
+                        context.donePurchases.Add(donepurchase);
+                    }
+                    context.SaveChanges();
+
+                    try
+                    {
+                        using (MailMessage mail = new MailMessage())
+                        {
+                            mail.From = new MailAddress("ayhantefik93@gmail.com");
+                            mail.To.Add(username);
+                            mail.Subject = "Din beställning - AT delivery";
+                            mail.Body = $"Din beställning genomfördes. " + "<br/>" + "<br/>" + "Kvitto" +
+                        "<br/>" + "<br/>" + datetimenow.ToString("dd MMMMM HH:mm, yyyy") + "<br/>" + receipt + $"Totalt: {totalSum}";
+
+                            mail.IsBodyHtml = true;
+
+
+                            using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
+                            {
+                                smtp.Credentials = new NetworkCredential("ayhantefik93@gmail.com", "odhi myqm cfhr tqqt");
+                                smtp.EnableSsl = true;
+                                smtp.Send(mail);
+                            }
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                    }
+
+                    addedItems.ItemList.Clear();
+                    addedItems.UpdateCurrentAddedItems = 0;
+                    paymentVisibility = "none";
+                    donePaymentVisibility = "block";
+                }
+                else
+                {
+                    loaderVisibility = "display: none";
+                    messageAdress = "Du behöver fylla adressen";
+                }
+            }
+            else
+            {
+                loaderVisibility = "display: none";
+                paymentVisibility = "none";
+                needLogInVisibility = "block";
+            }
+        });
+    }
+    private async Task DeleteItem(string itemName, string eateryName)
+    {
+        int updateTotalItems = 0;
+        addedItems.ItemList.RemoveAll(item => item.Name == itemName && item.EateryName == eateryName);
+        // Update total sum
+        totalSum = 0;
+        foreach (var item in addedItems.ItemList)
+        {
+            totalSum += item.Quantity * item.Price;
+            updateTotalItems += item.Quantity;
+        }
+        addedItems.UpdateCurrentAddedItems = updateTotalItems;
+        StateHasChanged();
+    }
+}

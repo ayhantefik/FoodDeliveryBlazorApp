@@ -1,0 +1,129 @@
+﻿@using FoodDelivery.Global;
+@inject AddedItems addedItems;
+<div class="top-row ps-3 navbar navbar-light" id="mobiletoprow" style="background-color: white; border-bottom: 1px solid darkgray;">
+    <div class="container-fluid">
+        <AuthorizeView>
+            <NotAuthorized>
+                <a href=""><i class="fa fa-home" style="font-size: 36px; color: black;"></i></a>
+            </NotAuthorized>
+        </AuthorizeView>
+        <AuthorizeView>
+            <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+                <span class="navbar-toggler-icon" style="color: black;"></span>
+            </button>
+        </AuthorizeView>
+        <AuthorizeView Roles="Driver">
+            <a href="scanner" style="color: black; position: absolute; top: 50%; left: 50%; margin-right: -50%; transform: translate(-50%, -50%);"><i style="font-size:30px" class="fa">&#xf029;</i></a>
+        </AuthorizeView>
+        <div style="width: auto;">
+            <AuthorizeView>
+                <NotAuthorized>
+                    <a href="/Identity/Account/Login">
+                        <div style="margin-right: 20px; position:relative; float: left; height: 36px; color: black; border-radius: 10px; border: solid 1px #cccccc;">
+                            <p style="margin-top: 5px; padding-left: 10px; padding-right: 10px; font-size: 14px;">Logga in</p>
+                        </div>
+                    </a>
+                </NotAuthorized>
+            </AuthorizeView>
+            <AuthorizeView>
+                <NotAuthorized>
+                    <a href="/Identity/Account/Register">
+                        <div style="position:relative; float: left; height: 36px; color: black; border-radius: 10px; border: solid 1px #cccccc;">
+                            <p style="margin-top: 5px; padding-left: 10px; padding-right: 10px; font-size: 14px;">Registrera</p>
+                        </div>
+                    </a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+        <a href="payment" style="display: block; color: black;">
+            <img style="float:left;" src="img/bag.png" height="40" width="40" />
+            <p style="float:left;">@addedItems.UpdateCurrentAddedItems</p>
+        </a>
+    </div>
+</div>
+<div id="mobilenav" class="nav-scrollable nav-static-top">
+    <button type="button" class="close" @onclick="CloseToggleNavMenu" aria-label="Close" style="background-color: white; color: black; border: hidden; font-size: 34px; position: fixed; left: 40px; top: 5px;">
+        <span aria-hidden="true">&times;</span>
+    </button>
+    <nav class="flex-column" style="margin-top: 60px;">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link justify-content-center" href="" @onclick="CloseToggleNavMenu" Match="NavLinkMatch.All">
+                Hem
+            </NavLink>
+        </div>
+        <AuthorizeView Roles="Driver">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link justify-content-center" href="orderlist" @onclick="CloseToggleNavMenu">
+                    Order
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link justify-content-center" href="history" @onclick="CloseToggleNavMenu">
+                    Beställningar
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="Admin">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link justify-content-center" href="controlpanel" @onclick="CloseToggleNavMenu">
+                    Kontrol Panel
+                </NavLink>
+            </div>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+    private bool closecollapseNavMenu = false;
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? module;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!collapseNavMenu)
+        {
+            module ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import", "./Shared/NavMenu.razor.js");
+
+            await module.InvokeVoidAsync("fullScreenMenu", "collapse");
+
+            await base.OnAfterRenderAsync(firstRender);
+        }
+        if (closecollapseNavMenu)
+        {
+            closecollapseNavMenu = false;
+            collapseNavMenu = true;
+            module ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import", "./Shared/NavMenu.razor.js");
+
+            await module.InvokeVoidAsync("closeMenu");
+
+            await base.OnAfterRenderAsync(firstRender);
+
+        }
+    }
+    private int currentAddedItems;
+    protected override void OnInitialized()
+    {
+        addedItems.OnCountChanged += OnCountChanged;
+    }
+    private void OnCountChanged(int newCount)
+    {
+        InvokeAsync(() => StateHasChanged());
+    }
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+    private void CloseToggleNavMenu()
+    {
+        closecollapseNavMenu = true;
+    }
+
+}

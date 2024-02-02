@@ -1,0 +1,42 @@
+﻿.status {
+    height: 20px;
+    width: 20px;
+    background-color: red;
+    float: left;
+    padding: 5px;
+    margin-right: 5px;
+    border-radius: 5px;
+}
+.modal {
+    height: 100%;
+    width: 100%;
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    padding-top: 2px; /* Location of the box */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.9); /* Black w/ opacity */
+    justify-content: center;
+    align-items: center;
+}
+
+.close {
+    color: black;
+    position: absolute;
+    top: 0;
+    right: 20px;
+    font-size: 35px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+    .close:hover,
+    .close:focus {
+        color: dimgrey;
+        text-decoration: none;
+        cursor: pointer;
+    }

@@ -1,0 +1,146 @@
+﻿div.scrollmenu {
+    background-color: black;
+    color: white;
+    overflow: auto;
+    white-space: nowrap;
+    width: 100%;
+    font-weight: bold;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+div.scrollmenu a {
+    display: inline-block;
+    color: white;
+    text-align: center;
+    padding: 14px;
+    text-decoration: none;
+}
+
+div.scrollmenu a:hover {
+    background-color: #777;
+}
+
+.menudiv {
+    background-color: white;
+    min-height: 110px;
+    overflow: hidden;
+    float: left;
+    margin-top: 10px;
+}
+
+.menurow_main {
+    background-color: #f2f3f2;
+    min-height: 125px;
+    float: left;
+    width: 100%;
+    border-bottom: 1px solid black;
+    position: relative;
+}
+
+.menuheader {
+    background-color: #f2f3f2;
+    width: 50%;
+    height: 15px;
+}
+
+.menucol1 {
+    background-color: #f2f3f2;
+    width: 50%;
+    float: left;
+}
+
+.productname {
+    margin-left: 5%;
+}
+
+.productcontent {
+    margin-left: 5%;
+}
+
+.menucol2 {
+    background-color: #f2f3f2;
+    width: 30%;
+    float: left;
+}
+
+.productimage {
+    background-color: white;
+    margin-top: 5px;
+    width: 92px;
+    height: 92px;
+    float: right;
+}
+
+.menucol3 {
+    background-color: #f2f3f2;
+    width: 20%;
+    float: left;
+}
+
+.productprice {
+    text-align: right;
+    max-height: 25px;
+    margin-right: 5%;
+}
+
+.productpriceF {
+    max-height: 25px;
+    text-align: right;
+    margin-right: 5%;
+}
+
+.modal {
+    height: 100%;
+    width: 100%;
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    padding-top: 2px; /* Location of the box */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.7); /* Black w/ opacity */
+    justify-content: center;
+    align-items: center;
+}
+.close {
+    color: black;
+    position: absolute;
+    top: 0;
+    right: 10px;
+    font-size: 35px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+.close:hover,
+.close:focus {
+    color: #bbb;
+    text-decoration: none;
+    cursor: pointer;
+}
+.loader {
+    border: 8px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 8px solid black;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 150px;
+    width: 60px;
+    height: 60px;
+    -webkit-animation: spin 2s linear infinite; /* Safari */
+    animation: spin 2s linear infinite;
+}
+/* Safari */
+@-webkit-keyframes spin {
+    0% {
+        -webkit-transform: rotate(0deg);
+    }
+
+    100% {
+        -webkit-transform: rotate(360deg);
+    }
+}

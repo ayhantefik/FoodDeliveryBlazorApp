@@ -1,0 +1,138 @@
+﻿@page "/addnewitem";
+@using FoodDelivery.Data;
+@using FoodDelivery.Models;
+@using FoodDelivery.Service;
+@using FoodDelivery.Utilities;
+@inject ILogger<Index> Logger
+@inject IFileUploadService imageService
+@inject AppDbContext context;
+@inject NavigationManager Navigation
+@inject ItemService itemservice;
+@attribute [Authorize(Roles = "Admin")]
+<div style="width: 100%; text-align: center;">
+    <p>@message</p>
+</div>
+<div style="width: 100%; display: flex; justify-content: center;">
+    <form id="neweateryform" @onsubmit="HandleFormSubmit" style="margin-top: 15px;">
+        <div class="form-group">
+            <div style="width: 100%">
+                <label for="subject">Namn</label>
+                <input type="text" class="form-control" id="" @bind="name" />
+            </div>
+        </div>
+        <div class="form-group" style="margin-top: 5px;">
+            <label for="recipient">Produkt typ</label>
+            <input type="text" class="form-control" @bind="productType" />
+        </div>
+        <div class="form-group" style="margin-top: 5px;">
+            <label for="subject">Beskrivning</label>
+            <input type="text" class="form-control" @bind="description" />
+        </div>
+        <div class="form-group" style="margin-top: 5px;">
+            <label for="subject">Pris</label>
+            <input type="text" class="form-control" @bind="price" />
+        </div>
+        <div class="form-group" style="margin-top: 30px;">
+            <label for="subject">Bild</label>
+            <InputFile @key="_inputFileId" OnChange="@SelectFiles" multiple />
+            <br />
+            @if (loading)
+            {
+                <p style="color:white">Loading..</p>
+            }
+            <p style="color: green;">@readyforupload</p>
+
+
+        </div>
+        <div class="d-grid gap-2 col-6 mx-auto">
+            <button type="submit" class="btn btn-primary" style="font-weight:bold; float: right; margin-top: 10px; background-color: grey; color: white; border-color: black;">LÄGG TILL</button>
+        </div>
+    </form>
+</div>
+
+
+@code {
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+    private IJSObjectReference? module;
+    private string name;
+    private string productType;
+    private string description;
+    private string image;
+    private double price;
+    private string e;
+    private string message = "";
+
+    private string _inputFileId = Guid.NewGuid().ToString();
+    bool loading = false;
+    List<string> messages = new();
+    List<IBrowserFile> files = new();
+    int maxFileSize = 10 * 1024 * 1024;
+    Eatery eateryModel = new();
+    private string readyforupload = "";
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        module ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import", "./Pages/AddNewEatery.razor.js");
+
+        await module.InvokeVoidAsync("deviceCheck");
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        e = query.TryGetValue("e", out var value) ? (string)value : "eaterynull";
+        
+    }
+    private async void SelectFiles(InputFileChangeEventArgs e)
+    {
+        readyforupload = "Loading..";
+        files = e.GetMultipleFiles(maxFileSize).ToList();
+        readyforupload = "Ready for upload";
+    }
+
+    private async Task HandleFormSubmit()
+    {
+        message = "";
+        loading = true;
+        messages.Clear();
+        var allowedExtenstions = new string[] { ".png", ".jpg", ".jpeg", ".gif" };
+        int count = 0;
+        foreach (var file in files)
+        {
+            try
+            {
+                (int statusCode, string statusMessage) = await imageService.UploadItemAsync(file, maxFileSize, allowedExtenstions);
+                if (statusCode == 1)
+                {
+                    messages.Add($"File : {file.Name} uploaded");
+                    MenuProduct product = new MenuProduct
+                        {
+                            Name = name,
+                            Producttype = productType,
+                            Description = description,
+                            Image = statusMessage,
+                            EateryName = e,
+                            Price = price
+                        };
+                    itemservice.AddItemInMenu(product);
+                    count++;
+                    message = "Success upload!";
+                }
+                else
+                    message = statusMessage;    
+            }
+            catch (Exception ex)
+            {
+                messages.Add($"File : {file.Name} Error : {ex.Message}");
+                Logger.LogError(ex.Message);
+            }
+        }
+
+        loading = false;
+        _inputFileId = Guid.NewGuid().ToString();
+        Navigation.NavigateTo($"/menucontroll?m={e}");
+    }  
+}

@@ -1,0 +1,218 @@
+﻿@page "/orderlist";
+@using FoodDelivery.Data;
+@using FoodDelivery.Models;
+@using System;
+@using System.IO;
+@using System.Net;
+@using System.Net.Mail;
+@using System.Diagnostics;
+@using System.Drawing;
+@using System.Drawing.Imaging;
+@using QRCoder;
+@inject AppDbContext context;
+@inject NavigationManager Navigation;
+@inject AuthenticationStateProvider auth;
+@attribute [Authorize(Roles = "Driver")]
+<div style="width: 100%; display: flex; justify-content: center;">
+    <div style="width: 60%; display: flex; justify-content: center; margin-top: 70px;">
+        <button type="button" class="@newOrderBtn" @onclick=NewOrderBtnClick style="width: 50%;">Nya order</button>
+        <button type="button" class="@myOrderBtn" @onclick=MyOrderBtnClick style="width: 50%;">Mina order</button>
+    </div>
+</div>
+<div class="list-group" style="width: 100%; @listVisibility; margin-top: 50px;">
+    @foreach (var item in orders)
+    {
+        if(item.Status == "new")
+        {
+            orderTime = item.DatePurchase;
+            string formatedTime = orderTime.ToString("HH:mm:ss");
+            eateryName = CapitalizeFirstLetter(item.EateryName);
+            <button type="button" @onclick='() => ShowOrder(item.PurchaseCode)' class="list-group-item list-group-item-action" style="width: 60%; margin-left: auto; margin-right: auto;">@formatedTime &emsp; @eateryName <span style='font-size:20px;'>&#11166;</span> @item.DeliveryAddress</button>
+        }
+    }
+</div>
+<div class="list-group" style="width: 100%; @mylistVisibility; margin-top: 50px;">
+    @foreach (var item in orders)
+    {
+        if (item.Driver == driverIdentity)
+        {
+            if (item.Status == "onway")
+            {
+                statusColor = "lightskyblue";
+            }
+            if (item.Status == "done")
+            {
+                statusColor = "green";
+            }
+            orderTime = item.DatePurchase;
+            string formatedTime = orderTime.ToString("HH:mm:ss dd MMM");
+            eateryName = CapitalizeFirstLetter(item.EateryName);
+            <button type="button" @onclick='() => ShowOrder(item.PurchaseCode)' class="list-group-item list-group-item-action" style="width: 60%; margin-left: auto; margin-right: auto;"><div class="status" style="background-color: @statusColor;"></div> @formatedTime &emsp; @eateryName <span style='font-size:20px;'>&#11166;</span> @item.DeliveryAddress</button>
+        }
+    }
+</div>
+<div class="modal" style="@orderVisibility">
+    
+    <div style="width: 60%; max-width: 400px; display: block; position: relative;">
+        <span class="close" id="closeid" @onclick=CloseItemPage>&times;</span>
+        <table style="background-color: #d9d9d9; color: black; width: 100%; padding-top: 40px; display: block;">
+            @foreach(var item in purchases)
+            {
+                if(choosenOrderCode == item.PurchaseCode)
+                {
+                    <tr>
+                        <td style="padding-left: 10px;">
+                            @item.Quantity @item.Name
+                        </td>
+                    </tr>
+                    eateryName = CapitalizeFirstLetter(item.EateryName);
+                    deliveryAddress = item.DeliveryAddress;
+                    orderStatus = item.Status;
+                    orderDate = item.DatePurchase;
+                }
+            }
+            <p style="padding-top: 40px; padding-left: 10px; font-size: 14px;"><b>Beställning från:</b> @eateryName</p>
+            <p style="padding-left: 10px; font-size: 14px;"><b>Leveransadress:</b> @deliveryAddress</p>
+            <p style="padding-left: 10px; padding-bottom: 10px; font-size: 14px;"><b>Datum:</b> @orderDate</p>
+            @if(orderStatus == "new")
+            {
+                <button @onclick='() => TakeMission(choosenOrderCode)' class="btn btn-success" style="width: 100%; margin-top: 20px; margin-left: auto; margin-right: auto;">Ta uppdrag</button>
+            }
+        </table>
+    </div>
+</div>
+
+@code {
+    private string listVisibility = "display: block";
+    private string mylistVisibility = "display: none";
+    private string orderVisibility = "display: none";
+    private string choosenOrderCode;
+    private string eateryName;
+    private string deliveryAddress;
+    private DateTime orderDate = new DateTime();
+    private string driverIdentity;
+    private string newOrderBtn = "btn btn-secondary";
+    private string myOrderBtn = "btn btn-outline-secondary";
+    private string orderStatus;
+    private string statusColor;
+    private List<DonePurchase> orders = new List<DonePurchase>();
+    private List<DonePurchase> purchases = new List<DonePurchase>();
+    private List<Eatery> eateriesList = new List<Eatery>();
+    private DateTime orderTime = new DateTime();
+    protected override async void OnInitialized()
+    {
+        foreach (var purchase in context.donePurchases)
+        {
+            purchases.Add(purchase);
+        }
+        foreach (var eatery in context.eateries)
+        {
+            eateriesList.Add(eatery);
+        }
+
+        orders = context.donePurchases
+            .Select(p => new DonePurchase { PurchaseCode = p.PurchaseCode, DatePurchase = p.DatePurchase, CustomerName = p.CustomerName, Status = p.Status, EateryName = p.EateryName, DeliveryAddress = p.DeliveryAddress, Driver = p.Driver })
+            .Distinct()
+            .OrderByDescending(p => p.DatePurchase)
+            .ToList();
+
+        var authenticationState = await auth.GetAuthenticationStateAsync();
+        var user = authenticationState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            // User is authenticated
+            driverIdentity = user.Identity.Name;
+        }
+    }
+    private void CloseItemPage()
+    {
+        orderVisibility = "none";
+    }
+    private void ShowOrder(string code)
+    {
+        choosenOrderCode = code;
+        orderVisibility = "display: flex";
+    }
+    private void TakeMission(string code)
+    {
+        double totalSum = 0;
+        string order = "";
+        foreach(var purchase in purchases)
+        {
+            if(purchase.PurchaseCode == code)
+            {
+                totalSum += purchase.Quantity * purchase.Price;
+                order += $"{purchase.Quantity} {purchase.Name} - {purchase.Price} kr <br/>";
+            }
+        }
+        var eateryName = purchases.Where(item => item.PurchaseCode == code).Select(item => item.EateryName).FirstOrDefault();
+        if (eateryName != null)
+        {
+            var eateryContact = eateriesList.Where(eatery => eatery.Navigation == eateryName).Select(eatery => eatery.Contact).FirstOrDefault();
+
+            // Generate the QR code
+            using MemoryStream ms = new();
+            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+            // Pass order code in qrcode
+            QRCodeData qrCodeData = qrGenerator.CreateQrCode(code, QRCodeGenerator.ECCLevel.Q);
+            QRCode qrCode = new QRCode(qrCodeData);
+            Bitmap qrCodeImage = qrCode.GetGraphic(20);
+            qrCodeImage.Save(ms, ImageFormat.Png);
+            try
+            {
+                using (MailMessage mail = new MailMessage())
+                {
+                    mail.From = new MailAddress("ayhantefik93@gmail.com");
+                    mail.To.Add(eateryContact);
+                    mail.Subject = "Ny beställning";
+                    mail.Body = $"{order} <br/> Totalt: {totalSum}";
+
+                    mail.IsBodyHtml = true;
+
+                    ms.Position = 0;
+
+                    var attachment = new Attachment(ms, "qrcode.png", "image/png");
+                    mail.Attachments.Add(attachment);
+
+                    using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
+                    {
+                        smtp.Credentials = new NetworkCredential("ayhantefik93@gmail.com", "odhi myqm cfhr tqqt");
+                        smtp.EnableSsl = true;
+                        smtp.Send(mail);
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+            }
+        }
+        context.donePurchases.Where(item => item.PurchaseCode == code).ToList().ForEach(item => { item.Status = "taken"; item.Driver = driverIdentity; });
+        context.SaveChanges();
+        orderVisibility = "display: none";
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+    }
+    private void NewOrderBtnClick()
+    {
+        newOrderBtn = "btn btn-secondary";
+        myOrderBtn = "btn btn-outline-secondary";
+        mylistVisibility = "display: none";
+        listVisibility = "display: block";
+    }
+    private void MyOrderBtnClick()
+    {
+        newOrderBtn = "btn btn-outline-secondary";
+        myOrderBtn = "btn btn-secondary";
+        listVisibility = "display: none";
+        mylistVisibility = "display: block";
+    }
+    private static string CapitalizeFirstLetter(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+        return char.ToUpper(input[0]) + input.Substring(1);
+    }
+}
