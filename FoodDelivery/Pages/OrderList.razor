@@ -163,7 +163,7 @@
             {
                 using (MailMessage mail = new MailMessage())
                 {
-                    mail.From = new MailAddress("ayhantefik93@gmail.com");
+                    mail.From = new MailAddress("mail@asd.com");
                     mail.To.Add(eateryContact);
                     mail.Subject = "Ny beställning";
                     mail.Body = $"{order} <br/> Totalt: {totalSum}";
@@ -177,7 +177,7 @@
 
                     using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
                     {
-                        smtp.Credentials = new NetworkCredential("ayhantefik93@gmail.com", "odhi myqm cfhr tqqt");
+                        smtp.Credentials = new NetworkCredential("mail@asd.com", "*******");
                         smtp.EnableSsl = true;
                         smtp.Send(mail);
                     }
